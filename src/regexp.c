@@ -4,7 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <regexp.h>
+
+#include <mruby.h>
+
+#include "regexp.h"
 #include "regmagic.h"
 
 /*
@@ -158,7 +161,8 @@ static void regoptail(struct comp *cp, char *p, char *val);
  * of the structure of the compiled regexp.
  */
 regexp *
-regcomp(exp)
+regcomp(mrb, exp)
+mrb_state *mrb;
 const char *exp;
 {
 	register regexp *r;
@@ -185,7 +189,7 @@ const char *exp;
 		FAIL("regexp too big");
 
 	/* Allocate space. */
-	r = (regexp *)malloc(sizeof(regexp) + (size_t)co.regsize);
+	r = (regexp *)mrb_malloc(mrb, sizeof(regexp) + (size_t)co.regsize);
 	if (r == NULL)
 		FAIL("out of space");
 

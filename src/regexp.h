@@ -15,7 +15,7 @@ typedef struct regexp {
 	char program[1];	/* Unwarranted chumminess with compiler. */
 } regexp;
 
-extern regexp *regcomp(const char *re);
+extern regexp *regcomp(mrb_state *mrb, const char *re);
 extern int regexec(regexp *rp, const char *s);
 extern void regsub(const regexp *rp, const char *src, char *dst);
 extern void regerror(char *message);
