@@ -1,4 +1,9 @@
 class HsRegexp
+  # ISO 15.2.15.6.1
+  def self.compile(*args)
+    self.new(*args)
+  end
+
   # ISO 15.2.15.7.8
   attr_reader :source
 end
