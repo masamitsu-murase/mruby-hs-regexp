@@ -1,35 +1,58 @@
 class HsRegexp
-  # 15.2.15.7.8
+  # ISO 15.2.15.7.8
   attr_reader :source
 end
 
 class HsMatchData
+  # ISO 15.2.16.3.11
+  attr_reader :string
+
   def initialize
     @data = []
+    @string = ""
   end
 
-  def push(str = nil, pos = nil)
-    if (str && pos)
-      @data.push(str: str, pos: pos)
+  def push(beg = nil, len = nil)
+    if (beg && len)
+      @data.push(beg: beg, len: len)
     else
       @data.push(nil)
     end
   end
 
-  def begin(index = 0)
-    return (@data[index] && @data[index][:pos])
+  # ISO 15.2.16.3.2
+  def begin(index)
+    d = @data[index]
+    return (d && d[:beg])
   end
 
+  # ISO 15.2.16.3.4
   def end(index = 0)
-    return (@data[index] && (@data[index][:pos] + @data[index][:str].size))
+    d = @data[index]
+    return (d && (d[:beg] + d[:len]))
   end
 
+  # ISO 15.2.16.3.1
   def [](index)
-    return (@data[index] && @data[index][:str])
+    d = @data[index]
+    return (d && @string.slice(d[:beg], d[:len]))
   end
 
-  def size
-    return @data.size
+  # ISO 15.2.16.3.8
+  def post_match
+    d = @data[0]
+    return @string.slice(d[:beg] + d[:len] .. -1)
+  end
+
+  # ISO 15.2.16.3.9
+  def pre_match
+    return @string.slice(0, @data[0][:beg])
+  end
+
+  # ISO 15.2.16.3.7
+  def offset(index)
+    d = @data[index]
+    return (d && [ d[:beg], d[:beg] + d[:len] ])
   end
 end
 

@@ -66,8 +66,7 @@ hs_regexp_initialize(mrb_state *mrb, mrb_value self)
 static mrb_value
 hs_regexp_initialize_copy(mrb_state *mrb, mrb_value copy)
 {
-    mrb_value src, source_str;
-    struct mrb_hs_regexp *reg;
+    mrb_value src;
 
     mrb_get_args(mrb, "o", &src);
     if (mrb_obj_equal(mrb, copy, src)){
@@ -84,30 +83,30 @@ hs_regexp_initialize_copy(mrb_state *mrb, mrb_value copy)
 static mrb_value
 hs_regexp_get_match_data(mrb_state *mrb, mrb_value self, const char *str)
 {
-    size_t i;
-    mrb_value hs_match_data_cls, match_data, str_value;
-    mrb_value args[2];
-    mrb_sym sym_push;
+    mrb_value hs_match_data_cls, match_data;
     struct mrb_hs_regexp *reg;
 
     reg = DATA_PTR(self);
 
     hs_match_data_cls = mrb_const_get(mrb, mrb_obj_value(mrb->object_class), INTERN("HsMatchData"));
     match_data = mrb_funcall_argv(mrb, hs_match_data_cls, INTERN("new"), 0, NULL);
-    sym_push = INTERN("push");
 
-    args[0] = str_value = mrb_str_new(mrb, reg->reg->startp[0], reg->reg->endp[0] - reg->reg->startp[0]);
-    args[1] = mrb_fixnum_value(reg->reg->startp[0] - str);
-    mrb_funcall_argv(mrb, match_data, sym_push, sizeof(args)/sizeof(args[0]), &args[0]);
-    for (i = 1; i < sizeof(reg->reg->startp)/sizeof(reg->reg->startp[0]); i++){
-        if (reg->reg->startp[i] && reg->reg->endp[i]){
-            args[0] = mrb_str_substr(mrb, str_value,
-                                     (mrb_int)(reg->reg->startp[i] - reg->reg->startp[0]),
-                                     reg->reg->endp[i] - reg->reg->startp[i]);
-            args[1] = mrb_fixnum_value(reg->reg->startp[i] - str);
-            mrb_funcall_argv(mrb, match_data, sym_push, sizeof(args)/sizeof(args[0]), &args[0]);
-        }else{
-            mrb_funcall_argv(mrb, match_data, sym_push, 0, NULL);
+    mrb_iv_set(mrb, match_data, INTERN("@string"), mrb_str_new_cstr(mrb, str));
+
+    {
+        mrb_value args[2];
+        mrb_sym sym_push;
+        size_t i;
+
+        sym_push = INTERN("push");
+        for (i = 0; i < sizeof(reg->reg->startp)/sizeof(reg->reg->startp[0]); i++){
+            if (reg->reg->startp[i] && reg->reg->endp[i]){
+                args[0] = mrb_fixnum_value(reg->reg->startp[i] - str);
+                args[1] = mrb_fixnum_value(reg->reg->endp[i] - reg->reg->startp[i]);
+                mrb_funcall_argv(mrb, match_data, sym_push, sizeof(args)/sizeof(args[0]), &args[0]);
+            }else{
+                mrb_funcall_argv(mrb, match_data, sym_push, 0, NULL);
+            }
         }
     }
 
