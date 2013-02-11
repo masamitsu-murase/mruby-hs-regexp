@@ -1,4 +1,6 @@
 class HsRegexp
+  # 15.2.15.7.8
+  attr_reader :source
 end
 
 class HsMatchData
