@@ -15,7 +15,13 @@ typedef struct regexp {
 	char program[1];	/* Unwarranted chumminess with compiler. */
 } regexp;
 
-extern regexp *regcomp(mrb_state *mrb, const char *re);
-extern int regexec(regexp *rp, const char *s);
-extern void regsub(const regexp *rp, const char *src, char *dst);
-extern void regerror(char *message);
+struct mrb_state;
+typedef struct regexp_info {
+    struct mrb_state *mrb;
+    const char *error_msg;
+} regexp_info;
+
+extern regexp *regcomp(regexp_info *ri, const char *re);
+extern int regexec(regexp_info *ri, regexp *rp, const char *s);
+extern void regsub(regexp_info *ri, const regexp *rp, const char *src, char *dst);
+extern void regerror(regexp_info *ri, char *message);

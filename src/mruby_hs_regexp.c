@@ -34,6 +34,7 @@ static void
 hs_regexp_init(mrb_state *mrb, mrb_value self, mrb_value str)
 {
     struct mrb_hs_regexp *reg;
+    regexp_info ri = { mrb };
 
     if (!DATA_PTR(self)){
         DATA_PTR(self) = mrb_malloc(mrb, sizeof(struct mrb_hs_regexp));
@@ -44,9 +45,10 @@ hs_regexp_init(mrb_state *mrb, mrb_value self, mrb_value str)
         mrb_free(mrb, reg->reg);
     }
 
-    reg->reg = regcomp(mrb, RSTRING_PTR(str));
+    reg->reg = regcomp(&ri, RSTRING_PTR(str));
     if (!reg->reg){
-        mrb_raisef(mrb, E_ARGUMENT_ERROR, "'%s' is an invalid regular expression.", str);
+        mrb_raisef(mrb, E_ARGUMENT_ERROR, "'%s' is an invalid regular expression because %s.",
+                   RSTRING_PTR(str), ri.error_msg);
     }
     mrb_iv_set(mrb, self, INTERN("@source"), str);
 }
@@ -123,6 +125,7 @@ hs_regexp_match(mrb_state *mrb, mrb_value self)
     const char *str;
     struct mrb_hs_regexp *reg;
     mrb_value m;
+    regexp_info ri = { mrb };
 
     mrb_get_args(mrb, "z", &str);
 
@@ -131,7 +134,7 @@ hs_regexp_match(mrb_state *mrb, mrb_value self)
         mrb_raise(mrb, E_ARGUMENT_ERROR, "HsRegexp is not initialized.");
     }
 
-    if (regexec(reg->reg, str)){
+    if (regexec(&ri, reg->reg, str)){
         m = hs_regexp_get_match_data(mrb, self, str);
     }else{
         m = mrb_nil_value();
@@ -142,8 +145,9 @@ hs_regexp_match(mrb_state *mrb, mrb_value self)
 }
 
 ////////////////////////////////////////////////////////////////
-void regerror(char *message)
+void regerror(regexp_info *ri, char *message)
 {
+    ri->error_msg = message;
 }
 
 ////////////////////////////////////////////////////////////////
