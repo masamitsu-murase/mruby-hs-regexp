@@ -118,6 +118,7 @@ hs_regexp_match(mrb_state *mrb, mrb_value self)
 {
     const char *str;
     struct mrb_hs_regexp *reg;
+    mrb_value m;
 
     mrb_get_args(mrb, "z", &str);
 
@@ -126,11 +127,14 @@ hs_regexp_match(mrb_state *mrb, mrb_value self)
         mrb_raise(mrb, E_ARGUMENT_ERROR, "HsRegexp is not initialized.");
     }
 
-    if (!regexec(reg->reg, str)){
-        return mrb_nil_value();
+    if (regexec(reg->reg, str)){
+        m = hs_regexp_get_match_data(mrb, self, str);
+    }else{
+        m = mrb_nil_value();
     }
 
-    return hs_regexp_get_match_data(mrb, self, str);
+    mrb_obj_iv_set(mrb, (struct RObject *)mrb_class_real(RDATA(self)->c), INTERN("@last_match"), m);
+    return m;
 }
 
 ////////////////////////////////////////////////////////////////

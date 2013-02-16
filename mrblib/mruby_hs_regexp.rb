@@ -6,6 +6,10 @@ class HsRegexp
 
   # ISO 15.2.15.7.8
   attr_reader :source
+
+  def self.last_match
+    return @last_match
+  end
 end
 
 class HsMatchData
