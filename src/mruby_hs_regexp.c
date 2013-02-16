@@ -8,6 +8,9 @@
 
 #define INTERN(str) mrb_intern2(mrb, str, sizeof(str) - 1)
 
+#define IGNORECASE  0x01
+#define MULTILINE   0x02
+
 ////////////////////////////////////////////////////////////////
 struct mrb_hs_regexp
 {
@@ -54,8 +57,9 @@ hs_regexp_initialize(mrb_state *mrb, mrb_value self)
     char *str;
     int len;
     mrb_value source;
+    mrb_int flag;
 
-    mrb_get_args(mrb, "s", &str, &len);
+    mrb_get_args(mrb, "s|i", &str, &len, &flag);
 
     source = mrb_str_new(mrb, str, len);
     hs_regexp_init(mrb, self, source);
@@ -151,7 +155,10 @@ mrb_mruby_hs_regexp_gem_init(mrb_state* mrb)
     r = mrb_define_class(mrb, "HsRegexp", mrb->object_class);
     MRB_SET_INSTANCE_TT(r, MRB_TT_DATA);
 
-    mrb_define_method(mrb, r, "initialize", hs_regexp_initialize, ARGS_REQ(1));
+    mrb_define_const(mrb, r, "IGNORECASE", mrb_fixnum_value(IGNORECASE));
+    mrb_define_const(mrb, r, "MULTILINE", mrb_fixnum_value(MULTILINE));
+
+    mrb_define_method(mrb, r, "initialize", hs_regexp_initialize, ARGS_ANY());
     mrb_define_method(mrb, r, "initialize_copy", hs_regexp_initialize_copy, ARGS_REQ(1));
     mrb_define_method(mrb, r, "match", hs_regexp_match, ARGS_REQ(1));
 }
