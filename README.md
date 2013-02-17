@@ -1,7 +1,13 @@
 mruby Henry Spencer's regular expression (mruby-hs-regexp)
 =========
 
-This mrbgem provides Henry Spencer's regular expression.
+This mrbgem provides [Henry Spencer's regular expression](http://www.arglist.com/regex).
+
+This is a **light-weight** regular expression library.
+
+This module is based on Henry Spencer's *book library* and I add some features, such as 'IGNORECASE' and 'MULTILINE'.
+
+I may develop another mrbgem based on Henry Spencer's "BSD library", which is compliant with POSIX.2, if requested.
 
 # Example
 ```ruby
