@@ -16,11 +16,10 @@
  * simple cases.  They are:
  *
  * regstart	char that must begin a match; '\0' if none obvious
- * reganch	is the match anchored (at beginning-of-line only)?
  * regmust	string (pointer into program) that match must include, or NULL
  * regmlen	length of regmust string
  *
- * Regstart and reganch permit very fast decisions on suitable starting points
+ * Regstart permit very fast decisions on suitable starting points
  * for a match, cutting down the work a lot.  Regmust permits fast rejection
  * of lines that cannot possibly match.  The regmust tests are costly enough
  * that regcomp() supplies a regmust only if the r.e. contains something
@@ -203,7 +202,6 @@ const char *exp;
 
 	/* Dig out information for optimizations. */
 	r->regstart = '\0';		/* Worst-case defaults. */
-	r->reganch = 0;
 	r->regmust = NULL;
 	r->regmlen = 0;
 	scan = r->program+1;		/* First BRANCH. */
@@ -213,8 +211,6 @@ const char *exp;
 		/* Starting-point info. */
 		if (OP(scan) == EXACTLY)
 			r->regstart = *OPERAND(scan);
-		else if (OP(scan) == BOL)
-			r->reganch = 1;
 
 		/*
 		 * If there's something expensive in the r.e., find the
@@ -678,6 +674,57 @@ void regdump(regexp_info *ri);
 static char *regprop(regexp_info *ri);
 #endif
 
+static int
+regmatchbol(ri, ep)
+regexp_info *ri;
+struct exec *ep;
+{
+    if (ep->reginput == ep->regbol){
+        return 1;
+    }
+
+    /* Currently, this module supports only '\n' */
+    if (*(ep->reginput - 1) == '\n'){
+        return 1;
+    }
+    return 0;
+}
+
+static int
+regmatcheol(ri, ep)
+regexp_info *ri;
+struct exec *ep;
+{
+    if (*(ep->reginput) == '\0'){
+        return 1;
+    }
+
+    /* Currently, this module supports only '\n' */
+    if (*(ep->reginput) == '\n'){
+        return 1;
+    }
+    return 0;
+}
+
+static int
+regmatchany(ri, ep)
+regexp_info *ri;
+struct exec *ep;
+{
+    if (*ep->reginput == '\0'){
+        return 0;
+    }
+
+    /* Currently, this module supports only '\n' */
+    if (!(ri->flag & REGEXP_FLAG_MULTILINE)){
+        if  (*ep->reginput == '\n'){
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 /*
  - regexec - match a regexp against a string
  */
@@ -711,10 +758,6 @@ const char *str;
 	ex.regbol = string;
 	ex.regstartp = prog->startp;
 	ex.regendp = prog->endp;
-
-	/* Simplest case:  anchored match need be tried only once. */
-	if (prog->reganch)
-		return(regtry(ri, &ex, prog, string));
 
 	/* Messy cases:  unanchored match. */
 	if (prog->regstart != '\0') {
@@ -795,15 +838,15 @@ char *prog;
 
 		switch (OP(scan)) {
 		case BOL:
-			if (ep->reginput != ep->regbol)
+			if (!regmatchbol(ri, ep))
 				return(0);
 			break;
 		case EOL:
-			if (*ep->reginput != '\0')
+			if (!regmatcheol(ri, ep))
 				return(0);
 			break;
 		case ANY:
-			if (*ep->reginput == '\0')
+                        if (!regmatchany(ri, ep))
 				return(0);
 			ep->reginput++;
 			break;
@@ -941,7 +984,17 @@ char *node;
 
 	switch (OP(node)) {
 	case ANY:
-		return(strlen(ep->reginput));
+		if (ri->flag & REGEXP_FLAG_MULTILINE){
+                    return(strlen(ep->reginput));
+                }else{
+                    char *ptr;
+                    for (ptr = ep->reginput; *ptr; ptr++){
+                        if (*ptr == '\n'){
+                            return ptr - ep->reginput;
+                        }
+                    }
+                    return ptr - ep->reginput;
+                }
 		break;
 	case EXACTLY:
 		ch = *OPERAND(node);
@@ -1021,8 +1074,6 @@ regexp *r;
 	/* Header fields of interest. */
 	if (r->regstart != '\0')
 		printf("start `%c' ", r->regstart);
-	if (r->reganch)
-		printf("anchored ");
 	if (r->regmust != NULL)
 		printf("must have \"%s\"", r->regmust);
 	printf("\n");

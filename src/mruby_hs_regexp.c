@@ -8,13 +8,11 @@
 
 #define INTERN(str) mrb_intern2(mrb, str, sizeof(str) - 1)
 
-#define IGNORECASE  0x01
-#define MULTILINE   0x02
-
 ////////////////////////////////////////////////////////////////
 struct mrb_hs_regexp
 {
     regexp *reg;
+    unsigned char flag;
 };
 
 static void
@@ -31,10 +29,14 @@ hs_regexp_free(mrb_state *mrb, void *ptr)
 static struct mrb_data_type mrb_hs_regexp_type = { "HsRegexp", hs_regexp_free };
 
 static void
-hs_regexp_init(mrb_state *mrb, mrb_value self, mrb_value str)
+hs_regexp_init(mrb_state *mrb, mrb_value self, mrb_value str, unsigned char flag)
 {
     struct mrb_hs_regexp *reg;
-    regexp_info ri = { mrb };
+    regexp_info ri = { mrb, flag };
+
+    if (flag & ~REGEXP_FLAG_ALL){
+        mrb_raise(mrb, E_ARGUMENT_ERROR, "Invalid flag.");
+    }
 
     if (!DATA_PTR(self)){
         DATA_PTR(self) = mrb_malloc(mrb, sizeof(struct mrb_hs_regexp));
@@ -50,6 +52,7 @@ hs_regexp_init(mrb_state *mrb, mrb_value self, mrb_value str)
         mrb_raisef(mrb, E_ARGUMENT_ERROR, "'%s' is an invalid regular expression because %s.",
                    RSTRING_PTR(str), ri.error_msg);
     }
+    reg->flag = flag;
     mrb_iv_set(mrb, self, INTERN("@source"), str);
 }
 
@@ -59,12 +62,12 @@ hs_regexp_initialize(mrb_state *mrb, mrb_value self)
     char *str;
     int len;
     mrb_value source;
-    mrb_int flag;
+    mrb_int flag = 0;
 
     mrb_get_args(mrb, "s|i", &str, &len, &flag);
 
     source = mrb_str_new(mrb, str, len);
-    hs_regexp_init(mrb, self, source);
+    hs_regexp_init(mrb, self, source, (unsigned char)flag);
 
     return mrb_nil_value();
 }
@@ -73,6 +76,7 @@ static mrb_value
 hs_regexp_initialize_copy(mrb_state *mrb, mrb_value copy)
 {
     mrb_value src;
+    struct mrb_hs_regexp *reg;
 
     mrb_get_args(mrb, "o", &src);
     if (mrb_obj_equal(mrb, copy, src)){
@@ -82,7 +86,8 @@ hs_regexp_initialize_copy(mrb_state *mrb, mrb_value copy)
         mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");
     }
 
-    hs_regexp_init(mrb, copy, mrb_funcall_argv(mrb, src, INTERN("source"), 0, NULL));
+    Data_Get_Struct(mrb, src, &mrb_hs_regexp_type, reg);
+    hs_regexp_init(mrb, copy, mrb_funcall_argv(mrb, src, INTERN("source"), 0, NULL), reg->flag);
     return copy;
 }
 
@@ -134,6 +139,7 @@ hs_regexp_match(mrb_state *mrb, mrb_value self)
         mrb_raise(mrb, E_ARGUMENT_ERROR, "HsRegexp is not initialized.");
     }
 
+    ri.flag = reg->flag;
     if (regexec(&ri, reg->reg, str)){
         m = hs_regexp_get_match_data(mrb, self, str);
     }else{
@@ -159,8 +165,8 @@ mrb_mruby_hs_regexp_gem_init(mrb_state* mrb)
     r = mrb_define_class(mrb, "HsRegexp", mrb->object_class);
     MRB_SET_INSTANCE_TT(r, MRB_TT_DATA);
 
-    mrb_define_const(mrb, r, "IGNORECASE", mrb_fixnum_value(IGNORECASE));
-    mrb_define_const(mrb, r, "MULTILINE", mrb_fixnum_value(MULTILINE));
+    mrb_define_const(mrb, r, "IGNORECASE", mrb_fixnum_value(REGEXP_FLAG_IGNORECASE));
+    mrb_define_const(mrb, r, "MULTILINE", mrb_fixnum_value(REGEXP_FLAG_MULTILINE));
 
     mrb_define_method(mrb, r, "initialize", hs_regexp_initialize, ARGS_ANY());
     mrb_define_method(mrb, r, "initialize_copy", hs_regexp_initialize_copy, ARGS_REQ(1));

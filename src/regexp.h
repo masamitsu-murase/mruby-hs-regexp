@@ -9,7 +9,6 @@ typedef struct regexp {
 	char *startp[NSUBEXP];
 	char *endp[NSUBEXP];
 	char regstart;		/* Internal use only. */
-	char reganch;		/* Internal use only. */
 	char *regmust;		/* Internal use only. */
 	int regmlen;		/* Internal use only. */
 	char program[1];	/* Unwarranted chumminess with compiler. */
@@ -18,8 +17,13 @@ typedef struct regexp {
 struct mrb_state;
 typedef struct regexp_info {
     struct mrb_state *mrb;
+    unsigned char flag;
     const char *error_msg;
 } regexp_info;
+
+#define REGEXP_FLAG_IGNORECASE  (1 << 0)
+#define REGEXP_FLAG_MULTILINE   (1 << 1)
+#define REGEXP_FLAG_ALL (REGEXP_FLAG_IGNORECASE | REGEXP_FLAG_MULTILINE)
 
 extern regexp *regcomp(regexp_info *ri, const char *re);
 extern int regexec(regexp_info *ri, regexp *rp, const char *s);
