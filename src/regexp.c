@@ -63,6 +63,27 @@
 			/*	OPEN+1 is number 1, etc. */
 #define	CLOSE	30	/* no	Analogous to OPEN. */
 
+#if defined(HAVE_STRCASECMP)
+#define STRNCASECMP(op1, op2, len) strncasecmp(op1, op2, len)
+#elif defined(_MSC_VER)
+#define STRNCASECMP(op1, op2, len) _strnicmp(op1, op2, len)
+#else
+#define STRNCASECMP(op1, op2, len) reg_strnicmp(op1, op2, len)
+static int
+reg_strnicmp(const char *op1, const char *op2, size_t len)
+{
+    size_t i;
+    for (i=0; i<len; i++){
+        if (tolower(*op1) != tolower(*op2)){
+            return tolower(*op1) - tolower(*op2);
+        }
+        op1++;
+        op2++;
+    }
+    return 0;
+}
+#endif
+
 /*
  * Opcode notes:
  *
@@ -467,8 +488,14 @@ int *flagp;
 			cp->regparse++;
 		}
 		while ((c = *cp->regparse++) != '\0' && c != ']') {
-			if (c != '-')
+                        if (c != '-'){
+                            if ((ri->flag & REGEXP_FLAG_IGNORECASE) && isalpha(c)){
+				regc(ri, cp, (char)tolower(c));
+				regc(ri, cp, (char)toupper(c));
+                            }else{
 				regc(ri, cp, c);
+                            }
+                        }
 			else if ((c = *cp->regparse) == ']' || c == '\0')
 				regc(ri, cp, '-');
 			else {
@@ -476,8 +503,14 @@ int *flagp;
 				rangeend = (unsigned char)c;
 				if (range > rangeend)
 					FAIL("invalid [] range");
-				for (range++; range <= rangeend; range++)
+				for (range++; range <= rangeend; range++){
+                                    if ((ri->flag & REGEXP_FLAG_IGNORECASE) && isalpha(range)){
+					regc(ri, cp, (char)tolower(range));
+					regc(ri, cp, (char)toupper(range));
+                                    }else{
 					regc(ri, cp, range);
+                                    }
+                                }
 				cp->regparse++;
 			}
 		}
@@ -857,7 +890,7 @@ char *prog;
 			register char *const opnd = OPERAND(scan);
 
 			len = strlen(opnd);
-			if (strncasecmp(opnd, ep->reginput, len) != 0)
+			if (STRNCASECMP(opnd, ep->reginput, len) != 0)
 				return(0);
 			ep->reginput += len;
                     }else{
@@ -875,53 +908,17 @@ char *prog;
                     break;
                 }
 		case ANYOF:
-                    if (ri->flag & REGEXP_FLAG_IGNORECASE){
-			if (*ep->reginput == '\0'){
-                            return 0;
-                        }
-                        if (isalpha(*ep->reginput)){
-                            char lch = tolower(*ep->reginput);
-                            char uch = toupper(*ep->reginput);
-                            if (strchr(OPERAND(scan), lch) == NULL && strchr(OPERAND(scan), uch) == NULL){
-                                return(0);
-                            }
-                        }else{
-                            if (strchr(OPERAND(scan), *ep->reginput) == NULL){
-                                return(0);
-                            }
-                        }
-			ep->reginput++;
-                    }else{
 			if (*ep->reginput == '\0' ||
 					strchr(OPERAND(scan), *ep->reginput) == NULL)
 				return(0);
 			ep->reginput++;
-                    }
-                    break;
+			break;
 		case ANYBUT:
-                    if (ri->flag & REGEXP_FLAG_IGNORECASE){
-                        if (*ep->reginput == '\0'){
-                            return 0;
-                        }
-                        if (isalpha(*ep->reginput)){
-                            char lch = tolower(*ep->reginput);
-                            char uch = toupper(*ep->reginput);
-                            if (strchr(OPERAND(scan), lch) != NULL || strchr(OPERAND(scan), uch) != NULL){
-                                return(0);
-                            }
-                        }else{
-                            if (strchr(OPERAND(scan), *ep->reginput) != NULL){
-                                return(0);
-                            }
-                        }
-			ep->reginput++;
-                    }else{
 			if (*ep->reginput == '\0' ||
 					strchr(OPERAND(scan), *ep->reginput) != NULL)
 				return(0);
 			ep->reginput++;
-                    }
-                    break;
+			break;
 		case NOTHING:
 			break;
 		case BACK:
@@ -1059,43 +1056,11 @@ char *node;
             }
             break;
 	case ANYOF:
-            if (ri->flag & REGEXP_FLAG_IGNORECASE){
-                char *ptr;
-                for (ptr = ep->reginput; *ptr; ptr++){
-                    if (isalpha(*ptr)){
-                        if (strchr(OPERAND(node), tolower(*ptr)) == NULL && strchr(OPERAND(node), toupper(*ptr)) == NULL){
-                            break;
-                        }
-                    }else{
-                        if (strchr(OPERAND(node), *ptr) == NULL){
-                            break;
-                        }
-                    }
-                }
-                return ptr - ep->reginput;
-            }else{
 		return(strspn(ep->reginput, OPERAND(node)));
-            }
-            break;
+		break;
 	case ANYBUT:
-            if (ri->flag & REGEXP_FLAG_IGNORECASE){
-                char *ptr;
-                for (ptr = ep->reginput; *ptr; ptr++){
-                    if (isalpha(*ptr)){
-                        if (strchr(OPERAND(node), tolower(*ptr)) != NULL || strchr(OPERAND(node), toupper(*ptr)) != NULL){
-                            break;
-                        }
-                    }else{
-                        if (strchr(OPERAND(node), *ptr) != NULL){
-                            break;
-                        }
-                    }
-                }
-                return ptr - ep->reginput;
-            }else{
 		return(strcspn(ep->reginput, OPERAND(node)));
-            }
-            break;
+		break;
 	default:		/* Oh dear.  Called inappropriately. */
 		regerror(ri, "internal error: bad call of regrepeat");
 		return(0);	/* Best compromise. */
