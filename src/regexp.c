@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <mruby.h>
 
@@ -209,7 +210,7 @@ const char *exp;
 		scan = OPERAND(scan);
 
 		/* Starting-point info. */
-		if (OP(scan) == EXACTLY)
+		if (OP(scan) == EXACTLY && !(ri->flag & REGEXP_FLAG_IGNORECASE))
 			r->regstart = *OPERAND(scan);
 
 		/*
@@ -851,6 +852,15 @@ char *prog;
 			ep->reginput++;
 			break;
 		case EXACTLY: {
+                    if (ri->flag & REGEXP_FLAG_IGNORECASE){
+			register size_t len;
+			register char *const opnd = OPERAND(scan);
+
+			len = strlen(opnd);
+			if (strncasecmp(opnd, ep->reginput, len) != 0)
+				return(0);
+			ep->reginput += len;
+                    }else{
 			register size_t len;
 			register char *const opnd = OPERAND(scan);
 
@@ -861,20 +871,57 @@ char *prog;
 			if (len > 1 && strncmp(opnd, ep->reginput, len) != 0)
 				return(0);
 			ep->reginput += len;
-			break;
-			}
+                    }
+                    break;
+                }
 		case ANYOF:
+                    if (ri->flag & REGEXP_FLAG_IGNORECASE){
+			if (*ep->reginput == '\0'){
+                            return 0;
+                        }
+                        if (isalpha(*ep->reginput)){
+                            char lch = tolower(*ep->reginput);
+                            char uch = toupper(*ep->reginput);
+                            if (strchr(OPERAND(scan), lch) == NULL && strchr(OPERAND(scan), uch) == NULL){
+                                return(0);
+                            }
+                        }else{
+                            if (strchr(OPERAND(scan), *ep->reginput) == NULL){
+                                return(0);
+                            }
+                        }
+			ep->reginput++;
+                    }else{
 			if (*ep->reginput == '\0' ||
 					strchr(OPERAND(scan), *ep->reginput) == NULL)
 				return(0);
 			ep->reginput++;
-			break;
+                    }
+                    break;
 		case ANYBUT:
+                    if (ri->flag & REGEXP_FLAG_IGNORECASE){
+                        if (*ep->reginput == '\0'){
+                            return 0;
+                        }
+                        if (isalpha(*ep->reginput)){
+                            char lch = tolower(*ep->reginput);
+                            char uch = toupper(*ep->reginput);
+                            if (strchr(OPERAND(scan), lch) != NULL || strchr(OPERAND(scan), uch) != NULL){
+                                return(0);
+                            }
+                        }else{
+                            if (strchr(OPERAND(scan), *ep->reginput) != NULL){
+                                return(0);
+                            }
+                        }
+			ep->reginput++;
+                    }else{
 			if (*ep->reginput == '\0' ||
 					strchr(OPERAND(scan), *ep->reginput) != NULL)
 				return(0);
 			ep->reginput++;
-			break;
+                    }
+                    break;
 		case NOTHING:
 			break;
 		case BACK:
@@ -944,7 +991,7 @@ char *prog;
 			for (no = regrepeat(ri, ep, OPERAND(scan)) + 1; no > min; no--) {
 				ep->reginput = save + no - 1;
 				/* If it could work, try it. */
-				if (nextch == '\0' || *ep->reginput == nextch)
+				if (nextch == '\0')
 					if (regmatch(ri, ep, next))
 						return(1);
 			}
@@ -997,18 +1044,58 @@ char *node;
                 }
 		break;
 	case EXACTLY:
+            if (ri->flag & REGEXP_FLAG_IGNORECASE){
+		ch = (char)tolower(*OPERAND(node));
+		count = 0;
+		for (scan = ep->reginput; tolower(*scan) == ch; scan++)
+			count++;
+		return(count);
+            }else{
 		ch = *OPERAND(node);
 		count = 0;
 		for (scan = ep->reginput; *scan == ch; scan++)
 			count++;
 		return(count);
-		break;
+            }
+            break;
 	case ANYOF:
+            if (ri->flag & REGEXP_FLAG_IGNORECASE){
+                char *ptr;
+                for (ptr = ep->reginput; *ptr; ptr++){
+                    if (isalpha(*ptr)){
+                        if (strchr(OPERAND(node), tolower(*ptr)) == NULL && strchr(OPERAND(node), toupper(*ptr)) == NULL){
+                            break;
+                        }
+                    }else{
+                        if (strchr(OPERAND(node), *ptr) == NULL){
+                            break;
+                        }
+                    }
+                }
+                return ptr - ep->reginput;
+            }else{
 		return(strspn(ep->reginput, OPERAND(node)));
-		break;
+            }
+            break;
 	case ANYBUT:
+            if (ri->flag & REGEXP_FLAG_IGNORECASE){
+                char *ptr;
+                for (ptr = ep->reginput; *ptr; ptr++){
+                    if (isalpha(*ptr)){
+                        if (strchr(OPERAND(node), tolower(*ptr)) != NULL || strchr(OPERAND(node), toupper(*ptr)) != NULL){
+                            break;
+                        }
+                    }else{
+                        if (strchr(OPERAND(node), *ptr) != NULL){
+                            break;
+                        }
+                    }
+                }
+                return ptr - ep->reginput;
+            }else{
 		return(strcspn(ep->reginput, OPERAND(node)));
-		break;
+            }
+            break;
 	default:		/* Oh dear.  Called inappropriately. */
 		regerror(ri, "internal error: bad call of regrepeat");
 		return(0);	/* Best compromise. */

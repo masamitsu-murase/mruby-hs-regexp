@@ -35,3 +35,12 @@ assert("HsRegexp#match (multiline)") do
   patterns.all?{ |reg, str, result| reg.match(str)[0] == result }
 end
 
+assert("HsRegexp#match (ignorecase)") do
+  patterns = [
+    [ HsRegexp.new("aBcD", HsRegexp::IGNORECASE), "00AbcDef", "AbcD" ],
+    [ HsRegexp.new("0x[a-f]+", HsRegexp::IGNORECASE), "00XaBCdefG", "0XaBCdef" ]
+  ]
+
+  patterns.all?{ |reg, str, result| (p reg.match(str)[0]) == result }
+end
+
