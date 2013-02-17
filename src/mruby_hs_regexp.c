@@ -61,13 +61,22 @@ hs_regexp_initialize(mrb_state *mrb, mrb_value self)
 {
     char *str;
     int len;
-    mrb_value source;
-    mrb_int flag = 0;
+    mrb_value source, flag_value;
+    unsigned char flag;
 
-    mrb_get_args(mrb, "s|i", &str, &len, &flag);
+    flag_value = mrb_nil_value();
+    mrb_get_args(mrb, "s|o", &str, &len, &flag_value);
+
+    if (mrb_fixnum_p(flag_value)){
+        flag = (char)(mrb_fixnum(flag_value) & REGEXP_FLAG_ALL);
+    }else if (mrb_test(flag_value)){
+        flag = REGEXP_FLAG_IGNORECASE;
+    }else{
+        flag = 0;
+    }
 
     source = mrb_str_new(mrb, str, len);
-    hs_regexp_init(mrb, self, source, (unsigned char)flag);
+    hs_regexp_init(mrb, self, source, flag);
 
     return mrb_nil_value();
 }
