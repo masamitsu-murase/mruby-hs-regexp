@@ -106,7 +106,7 @@ hs_regexp_get_match_data(mrb_state *mrb, mrb_value self, const char *str)
     mrb_value hs_match_data_cls, match_data;
     struct mrb_hs_regexp *reg;
 
-    reg = DATA_PTR(self);
+    reg = (struct mrb_hs_regexp *)DATA_PTR(self);
 
     hs_match_data_cls = mrb_const_get(mrb, mrb_obj_value(mrb->object_class), INTERN("HsMatchData"));
     match_data = mrb_funcall_argv(mrb, hs_match_data_cls, INTERN("new"), 0, NULL);
@@ -159,6 +159,49 @@ hs_regexp_match(mrb_state *mrb, mrb_value self)
     return m;
 }
 
+static mrb_value
+hs_regexp_equal(mrb_state *mrb, mrb_value self)
+{
+    mrb_value other;
+    struct mrb_hs_regexp *self_reg, *other_reg;
+
+    mrb_get_args(mrb, "o", &other);
+
+    if (mrb_obj_equal(mrb, self, other)){
+        return mrb_true_value();
+    }
+
+    if (mrb_type(other) != MRB_TT_DATA || DATA_TYPE(other) != &mrb_hs_regexp_type){
+        return mrb_false_value();
+    }
+
+    self_reg = (struct mrb_hs_regexp *)DATA_PTR(self);
+    other_reg = (struct mrb_hs_regexp *)DATA_PTR(other);
+    if (!self_reg || !other_reg){
+        mrb_raise(mrb, E_RUNTIME_ERROR, "Invalid HsRegexp");
+    }
+
+    if (self_reg->flag != other_reg->flag){
+        return mrb_false_value();
+    }
+
+    return mrb_str_equal(mrb, mrb_iv_get(mrb, self, INTERN("@source")), mrb_iv_get(mrb, other, INTERN("@source"))) ?
+        mrb_true_value() : mrb_false_value();
+}
+
+static mrb_value
+hs_regexp_casefold_p(mrb_state *mrb, mrb_value self)
+{
+    struct mrb_hs_regexp *self_reg;
+
+    self_reg = DATA_PTR(self);
+    if (!self_reg){
+        mrb_raise(mrb, E_RUNTIME_ERROR, "Invalid HsRegexp");
+    }
+
+    return (self_reg->flag & REGEXP_FLAG_IGNORECASE) ? mrb_true_value() : mrb_false_value();
+}
+
 ////////////////////////////////////////////////////////////////
 void regerror(regexp_info *ri, char *message)
 {
@@ -180,6 +223,8 @@ mrb_mruby_hs_regexp_gem_init(mrb_state* mrb)
     mrb_define_method(mrb, r, "initialize", hs_regexp_initialize, ARGS_ANY());
     mrb_define_method(mrb, r, "initialize_copy", hs_regexp_initialize_copy, ARGS_REQ(1));
     mrb_define_method(mrb, r, "match", hs_regexp_match, ARGS_REQ(1));
+    mrb_define_method(mrb, r, "==", hs_regexp_equal, ARGS_REQ(1));
+    mrb_define_method(mrb, r, "casefold?", hs_regexp_casefold_p, ARGS_NONE());
 }
 
 void

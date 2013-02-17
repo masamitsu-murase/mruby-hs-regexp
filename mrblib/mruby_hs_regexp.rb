@@ -10,6 +10,15 @@ class HsRegexp
   def self.last_match
     return @last_match
   end
+
+  def ===(str)
+    return self.match(str) ? true : false
+  end
+
+  def =~(str)
+    m = self.match(str)
+    return m ? m.begin(0) : nil
+  end
 end
 
 class HsMatchData
@@ -62,6 +71,11 @@ class HsMatchData
   def offset(index)
     d = @data[index]
     return (d && [ d[:beg], d[:beg] + d[:len] ])
+  end
+
+  # ISO 15.2.16.3.13
+  def to_s
+    return self[0]
   end
 end
 
