@@ -979,16 +979,23 @@ char *prog;
 			break;
 			}
 		case STAR: case PLUS: {
-			register const char nextch =
-				(OP(next) == EXACTLY) ? *OPERAND(next) : '\0';
+                        char nextch, nextch_other = '\0';
 			register size_t no;
 			register char *const save = ep->reginput;
 			register const size_t min = (OP(scan) == STAR) ? 0 : 1;
 
+                        nextch = (OP(next) == EXACTLY) ? *OPERAND(next) : '\0';
+                        if (ri->flag & REGEXP_FLAG_IGNORECASE){
+                            if (nextch != '\0' && isalpha(nextch)){
+                                nextch = (char)tolower(nextch);
+                                nextch_other = (char)toupper(nextch);
+                            }
+                        }
+
 			for (no = regrepeat(ri, ep, OPERAND(scan)) + 1; no > min; no--) {
 				ep->reginput = save + no - 1;
 				/* If it could work, try it. */
-				if (nextch == '\0' || *ep->reginput == nextch)
+				if (nextch == '\0' || *ep->reginput == nextch || (nextch_other != '\0' && *ep->reginput == nextch_other))
 					if (regmatch(ri, ep, next))
 						return(1);
 			}
