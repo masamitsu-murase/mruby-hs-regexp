@@ -988,7 +988,7 @@ char *prog;
 			for (no = regrepeat(ri, ep, OPERAND(scan)) + 1; no > min; no--) {
 				ep->reginput = save + no - 1;
 				/* If it could work, try it. */
-				if (nextch == '\0')
+				if (nextch == '\0' || *ep->reginput == nextch)
 					if (regmatch(ri, ep, next))
 						return(1);
 			}
