@@ -13,8 +13,8 @@ class HsRegexp
   }
 
   # ISO 15.2.15.6.1
-  def self.compile(*args)
-    self.new(*args)
+  class << self
+    alias :compile :new
   end
 
   # ISO 15.2.15.6.2
@@ -29,7 +29,7 @@ class HsRegexp
     alias :quote :escape
   end
 
-  # 15.2.15.6.3
+  # ISO 15.2.15.6.3
   def self.last_match
     return @last_match
   end
