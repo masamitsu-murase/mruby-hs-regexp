@@ -1,6 +1,6 @@
 # Constant
 assert('HsRegexp::CONSTANT', '15.2.15.3') do
-  HsRegexp::IGNORECASE == 1 and HsRegexp::MULTILINE == 2
+  HsRegexp::IGNORECASE == 1 and HsRegexp::MULTILINE == 4
 end
 
 # Class method

@@ -22,7 +22,7 @@ typedef struct regexp_info {
 } regexp_info;
 
 #define REGEXP_FLAG_IGNORECASE  (1 << 0)
-#define REGEXP_FLAG_MULTILINE   (1 << 1)
+#define REGEXP_FLAG_MULTILINE   (1 << 2)
 #define REGEXP_FLAG_ALL (REGEXP_FLAG_IGNORECASE | REGEXP_FLAG_MULTILINE)
 
 extern regexp *regcomp(regexp_info *ri, const char *re);
