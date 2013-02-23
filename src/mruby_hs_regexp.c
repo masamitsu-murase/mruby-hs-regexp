@@ -6,6 +6,12 @@
 #include <mruby/data.h>
 #include "regexp.h"
 
+////////////////////////////////////////////////////////////////
+#ifndef HS_REGEXP_DISABLE_BUILT_IN_REGEXP
+#define HS_REGEXP_ENABLE_BUILT_IN_REGEXP
+#endif
+
+////////////////////////////////////////////////////////////////
 #define INTERN(str) mrb_intern2(mrb, str, sizeof(str) - 1)
 
 ////////////////////////////////////////////////////////////////
@@ -225,6 +231,10 @@ mrb_mruby_hs_regexp_gem_init(mrb_state* mrb)
     mrb_define_method(mrb, r, "match", hs_regexp_match, ARGS_REQ(1));
     mrb_define_method(mrb, r, "==", hs_regexp_equal, ARGS_REQ(1));
     mrb_define_method(mrb, r, "casefold?", hs_regexp_casefold_p, ARGS_NONE());
+
+#ifdef HS_REGEXP_ENABLE_BUILT_IN_REGEXP
+    mrb_define_global_const(mrb, "Regexp", mrb_obj_value(r));
+#endif
 }
 
 void
